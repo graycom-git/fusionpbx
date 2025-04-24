@@ -379,8 +379,8 @@
 		//name (category)
 			echo 	"<select name='name' id='name_select' class='formfld' style='width: auto; margin: 0;'>\n";
 			echo "		<option value='' selected='selected' disabled='disabled'>".$text['label-category']."</option>\n";
-
-			if (permission_exists('music_on_hold_domain')) {
+			//modified only display global options if in superadmin group
+			if (permission_exists('music_on_hold_domain') && if_group("superadmin")) {
 				echo "	<optgroup label='".$text['option-global']."'>\n";
 				if (!empty($streams) && @sizeof($streams) != 0) {
 					foreach ($streams as $row) {
@@ -476,131 +476,132 @@
 				//set the variables
 					$music_on_hold_name = $row['music_on_hold_name'];
 					$music_on_hold_rate = $row['music_on_hold_rate'];
-
-				//add the name (category)
-					if ($previous_name != $music_on_hold_name) {
-						echo "<b><i>".escape($music_on_hold_name)."</i></b>".(!is_uuid($row['domain_uuid']) ? '&nbsp;&nbsp;&nbsp;('.$text['label-global'].')' : null)."<br />\n";
-					}
-
-				//determine if rate was set to auto or not
-					$auto_rate = empty($music_on_hold_rate) ? true : false;
-
-				//determine icons to show
-					$stream_icons = array();
-					$i = 0;
-					if (permission_exists('music_on_hold_path')) {
-						$stream_icons[$i]['icon'] = 'fa-folder-open';
-						$stream_icons[$i]['title'] = $row['music_on_hold_name'];
-						$i++;
-					}
-					if ($row['music_on_hold_shuffle'] == 'true') {
-						$stream_icons[$i]['icon'] = 'fa-random';
-						$stream_icons[$i]['title'] = $text['label-shuffle'];
-						$i++;
-					}
-					if (!empty($row['music_on_hold_chime_list'])) {
-						$stream_icons[$i]['icon'] = 'fa-bell';
-						$stream_icons[$i]['title'] = $text['label-chime_list'].': '.$row['music_on_hold_chime_list'];
-						$i++;
-					}
-					if ($row['music_on_hold_channels'] == '2') {
-						$stream_icons[$i]['icon'] = 'fa-headphones';
-						$stream_icons[$i]['title'] = $text['label-stereo'];
-						$stream_icons[$i]['margin'] = 6;
-						$i++;
-					}
-					if (!empty($stream_icons)) {
-						$icons = '';
-						foreach ($stream_icons as $stream_icon) {
-							$icons .= "<span class='fas ".$stream_icon['icon']." icon_body' title='".escape($stream_icon['title'])."' style='width: 12px; height: 12px; margin-left: ".(!empty($stream_icon['margin']) ? $stream_icon['margin'] : 8)."px; vertical-align: text-top; cursor: help;'></span>";
+				//check group - if not in superadmin skip display of default (global) 
+					if (if_group("superadmin") || $music_on_hold_name != 'default') {
+					//add the name (category)
+						if ($previous_name != $music_on_hold_name) {
+							echo "<b><i>".escape($music_on_hold_name)."</i></b>".(!is_uuid($row['domain_uuid']) ? '&nbsp;&nbsp;&nbsp;('.$text['label-global'].')' : null)."<br />\n";
 						}
-					}
-
-				//set the rate label
-					$stream_rate = $auto_rate ? $text['option-default'] : ($music_on_hold_rate/1000).' kHz';
-					if (permission_exists('music_on_hold_edit')) {
-						$stream_details = "<a href='music_on_hold_edit.php?id=".urlencode($row['music_on_hold_uuid'])."' class='default-color'>".$stream_rate.'</a> '.$icons;
-					}
-					else {
-						$stream_details = $stream_rate.' '.$icons;
-					}
-
-				//get the music on hold path and files
-					$stream_path = str_replace("\$\${sounds_dir}",$_SESSION['switch']['sounds']['dir'] ?? '', $row['music_on_hold_path']);
-					if (file_exists($stream_path)) {
-						$stream_files = array_merge(glob($stream_path.'/*.wav'), glob($stream_path.'/*.mp3'), glob($stream_path.'/*.ogg'));
-					}
-
-				//start the table
-					echo "<div class='card'>\n";
-					echo "	<table class='list'>\n";
-					echo "		<tr class='list-header'>\n";
-					if (permission_exists('music_on_hold_delete')) {
-						echo "		<th class='checkbox'>\n";
-						echo "			<input type='checkbox' id='checkbox_all_".$row['music_on_hold_uuid']."' name='checkbox_all' onclick=\"list_all_toggle('".$row['music_on_hold_uuid']."'); document.getElementById('checkbox_all_".$row['music_on_hold_uuid']."_hidden').value = this.checked ? 'true' : ''; checkbox_on_change(this);\">\n";
-						echo "			<input type='hidden' id='checkbox_all_".$row['music_on_hold_uuid']."_hidden' name='moh[".$row['music_on_hold_uuid']."][checked]'>\n";
-						echo "		</th>\n";
-					}
-					if ($show == "all" && permission_exists('music_on_hold_all')) {
-						echo th_order_by('domain_name', $text['label-domain'], $order_by, $order, $param ?? null, "class='shrink'");
-					}
-					echo "			<th class='pct-50'>".$stream_details."</th>\n";
-					echo "			<th class='center shrink'>".$text['label-tools']."</th>\n";
-					echo "			<th class='right hide-xs no-wrap pct-20'>".$text['label-file-size']."</th>\n";
-					echo "			<th class='right hide-sm-dn pct-30'>".$text['label-uploaded']."</th>\n";
-					echo "		</tr>";
-					unset($stream_icons, $icons);
-
-				//list the stream files
-					if (!empty($stream_files)) {
-						foreach ($stream_files as $stream_file_path) {
-							$row_uuid = uuid();
-							$stream_file = pathinfo($stream_file_path, PATHINFO_BASENAME);
-							$stream_file_size = byte_convert(filesize($stream_file_path));
-							$stream_file_date = date("M d, Y H:i:s", filemtime($stream_file_path));
-							$stream_file_ext = pathinfo($stream_file, PATHINFO_EXTENSION);
-							switch ($stream_file_ext) {
-								case "wav" : $stream_file_type = "audio/wav"; break;
-								case "mp3" : $stream_file_type = "audio/mpeg"; break;
-								case "ogg" : $stream_file_type = "audio/ogg"; break;
+	
+					//determine if rate was set to auto or not
+						$auto_rate = empty($music_on_hold_rate) ? true : false;
+	
+					//determine icons to show
+						$stream_icons = array();
+						$i = 0;
+						if (permission_exists('music_on_hold_path')) {
+							$stream_icons[$i]['icon'] = 'fa-folder-open';
+							$stream_icons[$i]['title'] = $row['music_on_hold_name'];
+							$i++;
+						}
+						if ($row['music_on_hold_shuffle'] == 'true') {
+							$stream_icons[$i]['icon'] = 'fa-random';
+							$stream_icons[$i]['title'] = $text['label-shuffle'];
+							$i++;
+						}
+						if (!empty($row['music_on_hold_chime_list'])) {
+							$stream_icons[$i]['icon'] = 'fa-bell';
+							$stream_icons[$i]['title'] = $text['label-chime_list'].': '.$row['music_on_hold_chime_list'];
+							$i++;
+						}
+						if ($row['music_on_hold_channels'] == '2') {
+							$stream_icons[$i]['icon'] = 'fa-headphones';
+							$stream_icons[$i]['title'] = $text['label-stereo'];
+							$stream_icons[$i]['margin'] = 6;
+							$i++;
+						}
+						if (!empty($stream_icons)) {
+							$icons = '';
+							foreach ($stream_icons as $stream_icon) {
+								$icons .= "<span class='fas ".$stream_icon['icon']." icon_body' title='".escape($stream_icon['title'])."' style='width: 12px; height: 12px; margin-left: ".(!empty($stream_icon['margin']) ? $stream_icon['margin'] : 8)."px; vertical-align: text-top; cursor: help;'></span>";
 							}
-							//playback progress bar
-								echo "<tr class='list-row' id='recording_progress_bar_".$row_uuid."' style='display: none;' onclick=\"recording_seek(event,'".escape($row_uuid)."')\"><td id='playback_progress_bar_background_".escape($row_uuid)."' class='playback_progress_bar_background' colspan='5'><span class='playback_progress_bar' id='recording_progress_".$row_uuid."'></span></td></tr>\n";
-								echo "<tr class='list-row' style='display: none;'><td></td></tr>\n"; // dummy row to maintain alternating background color
-							$list_row_link = "javascript:recording_play('".$row_uuid."','".urlencode($stream_file)."');";
-							echo "<tr class='list-row' href=\"".$list_row_link."\">\n";
-							if (permission_exists('music_on_hold_delete')) {
-								echo "	<td class='checkbox'>\n";
-								echo "		<input type='checkbox' name='moh[".$row['music_on_hold_uuid']."][$x][checked]' id='checkbox_".$x."' class='checkbox_".$row['music_on_hold_uuid']."' value='true' onclick=\"checkbox_on_change(this); if (!this.checked) { document.getElementById('checkbox_all_".$row['music_on_hold_uuid']."').checked = false; }\">\n";
-								echo "		<input type='hidden' name='moh[".$row['music_on_hold_uuid']."][$x][file_name]' value=\"".escape($stream_file)."\" />\n";
+						}
+	
+					//set the rate label
+						$stream_rate = $auto_rate ? $text['option-default'] : ($music_on_hold_rate/1000).' kHz';
+						if (permission_exists('music_on_hold_edit')) {
+							$stream_details = "<a href='music_on_hold_edit.php?id=".urlencode($row['music_on_hold_uuid'])."' class='default-color'>".$stream_rate.'</a> '.$icons;
+						}
+						else {
+							$stream_details = $stream_rate.' '.$icons;
+						}
+	
+					//get the music on hold path and files
+						$stream_path = str_replace("\$\${sounds_dir}",$_SESSION['switch']['sounds']['dir'] ?? '', $row['music_on_hold_path']);
+						if (file_exists($stream_path)) {
+							$stream_files = array_merge(glob($stream_path.'/*.wav'), glob($stream_path.'/*.mp3'), glob($stream_path.'/*.ogg'));
+						}
+	
+					//start the table
+						echo "<div class='card'>\n";
+						echo "	<table class='list'>\n";
+						echo "		<tr class='list-header'>\n";
+						if (permission_exists('music_on_hold_delete')) {
+							echo "		<th class='checkbox'>\n";
+							echo "			<input type='checkbox' id='checkbox_all_".$row['music_on_hold_uuid']."' name='checkbox_all' onclick=\"list_all_toggle('".$row['music_on_hold_uuid']."'); document.getElementById('checkbox_all_".$row['music_on_hold_uuid']."_hidden').value = this.checked ? 'true' : ''; checkbox_on_change(this);\">\n";
+							echo "			<input type='hidden' id='checkbox_all_".$row['music_on_hold_uuid']."_hidden' name='moh[".$row['music_on_hold_uuid']."][checked]'>\n";
+							echo "		</th>\n";
+						}
+						if ($show == "all" && permission_exists('music_on_hold_all')) {
+							echo th_order_by('domain_name', $text['label-domain'], $order_by, $order, $param ?? null, "class='shrink'");
+						}
+						echo "			<th class='pct-50'>".$stream_details."</th>\n";
+						echo "			<th class='center shrink'>".$text['label-tools']."</th>\n";
+						echo "			<th class='right hide-xs no-wrap pct-20'>".$text['label-file-size']."</th>\n";
+						echo "			<th class='right hide-sm-dn pct-30'>".$text['label-uploaded']."</th>\n";
+						echo "		</tr>";
+						unset($stream_icons, $icons);
+	
+					//list the stream files
+						if (!empty($stream_files)) {
+							foreach ($stream_files as $stream_file_path) {
+								$row_uuid = uuid();
+								$stream_file = pathinfo($stream_file_path, PATHINFO_BASENAME);
+								$stream_file_size = byte_convert(filesize($stream_file_path));
+								$stream_file_date = date("M d, Y H:i:s", filemtime($stream_file_path));
+								$stream_file_ext = pathinfo($stream_file, PATHINFO_EXTENSION);
+								switch ($stream_file_ext) {
+									case "wav" : $stream_file_type = "audio/wav"; break;
+									case "mp3" : $stream_file_type = "audio/mpeg"; break;
+									case "ogg" : $stream_file_type = "audio/ogg"; break;
+								}
+								//playback progress bar
+									echo "<tr class='list-row' id='recording_progress_bar_".$row_uuid."' style='display: none;' onclick=\"recording_seek(event,'".escape($row_uuid)."')\"><td id='playback_progress_bar_background_".escape($row_uuid)."' class='playback_progress_bar_background' colspan='5'><span class='playback_progress_bar' id='recording_progress_".$row_uuid."'></span></td></tr>\n";
+									echo "<tr class='list-row' style='display: none;'><td></td></tr>\n"; // dummy row to maintain alternating background color
+								$list_row_link = "javascript:recording_play('".$row_uuid."','".urlencode($stream_file)."');";
+								echo "<tr class='list-row' href=\"".$list_row_link."\">\n";
+								if (permission_exists('music_on_hold_delete')) {
+									echo "	<td class='checkbox'>\n";
+									echo "		<input type='checkbox' name='moh[".$row['music_on_hold_uuid']."][$x][checked]' id='checkbox_".$x."' class='checkbox_".$row['music_on_hold_uuid']."' value='true' onclick=\"checkbox_on_change(this); if (!this.checked) { document.getElementById('checkbox_all_".$row['music_on_hold_uuid']."').checked = false; }\">\n";
+									echo "		<input type='hidden' name='moh[".$row['music_on_hold_uuid']."][$x][file_name]' value=\"".escape($stream_file)."\" />\n";
+									echo "	</td>\n";
+								}
+								if ($show == "all" && permission_exists('music_on_hold_all')) {
+									if (!empty($_SESSION['domains'][$row['domain_uuid']]['domain_name'])) {
+										$domain = $_SESSION['domains'][$row['domain_uuid']]['domain_name'];
+									}
+									else {
+										$domain = $text['label-global'];
+									}
+									echo "	<td>".escape($domain)."</td>\n";
+								}
+								echo "	<td class='overflow'>".escape($stream_file)."</td>\n";
+								echo "	<td class='button center no-link no-wrap'>";
+								echo 		"<audio id='recording_audio_".$row_uuid."' style='display: none;' preload='none' ontimeupdate=\"update_progress('".$row_uuid."')\" onended=\"recording_reset('".$row_uuid."');\" src='music_on_hold.php?action=download&id=".escape($row['music_on_hold_uuid'])."&file=".urlencode($stream_file)."' type='".$stream_file_type."'></audio>";
+								echo button::create(['type'=>'button','title'=>$text['label-play'].' / '.$text['label-pause'],'icon'=>$settings->get('theme', 'button_icon_play'),'id'=>'recording_button_'.$row_uuid,'onclick'=>"recording_play('".$row_uuid."','".urlencode($stream_file)."');"]);
+								echo button::create(['type'=>'button','title'=>$text['label-download'],'icon'=>$settings->get('theme', 'button_icon_download'),'link'=>"?action=download&id=".urlencode($row['music_on_hold_uuid'])."&file=".urlencode($stream_file)]);
 								echo "	</td>\n";
+								echo "	<td class='right no-wrap hide-xs'>".escape($stream_file_size)."</td>\n";
+								echo "	<td class='right no-wrap hide-sm-dn'>".escape($stream_file_date)."</td>\n";
+								echo "</tr>\n";
+								$x++;
 							}
-							if ($show == "all" && permission_exists('music_on_hold_all')) {
-								if (!empty($_SESSION['domains'][$row['domain_uuid']]['domain_name'])) {
-									$domain = $_SESSION['domains'][$row['domain_uuid']]['domain_name'];
-								}
-								else {
-									$domain = $text['label-global'];
-								}
-								echo "	<td>".escape($domain)."</td>\n";
-							}
-							echo "	<td class='overflow'>".escape($stream_file)."</td>\n";
-							echo "	<td class='button center no-link no-wrap'>";
-							echo 		"<audio id='recording_audio_".$row_uuid."' style='display: none;' preload='none' ontimeupdate=\"update_progress('".$row_uuid."')\" onended=\"recording_reset('".$row_uuid."');\" src='music_on_hold.php?action=download&id=".escape($row['music_on_hold_uuid'])."&file=".urlencode($stream_file)."' type='".$stream_file_type."'></audio>";
-							echo button::create(['type'=>'button','title'=>$text['label-play'].' / '.$text['label-pause'],'icon'=>$settings->get('theme', 'button_icon_play'),'id'=>'recording_button_'.$row_uuid,'onclick'=>"recording_play('".$row_uuid."','".urlencode($stream_file)."');"]);
-							echo button::create(['type'=>'button','title'=>$text['label-download'],'icon'=>$settings->get('theme', 'button_icon_download'),'link'=>"?action=download&id=".urlencode($row['music_on_hold_uuid'])."&file=".urlencode($stream_file)]);
-							echo "	</td>\n";
-							echo "	<td class='right no-wrap hide-xs'>".escape($stream_file_size)."</td>\n";
-							echo "	<td class='right no-wrap hide-sm-dn'>".escape($stream_file_date)."</td>\n";
-							echo "</tr>\n";
-							$x++;
 						}
+	
+						echo "	</table>\n";
+						echo "</div>\n";
+						echo "<br />\n";
 					}
-
-					echo "	</table>\n";
-					echo "</div>\n";
-					echo "<br />\n";
-
 				//set the previous music_on_hold_name
 					$previous_name = $music_on_hold_name;
 
