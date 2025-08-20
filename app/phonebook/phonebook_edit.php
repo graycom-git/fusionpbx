@@ -366,9 +366,9 @@
 		//echo "alert('rowcount: ".$phonebook_group."')";
 		//echo "</script>";
 
-		//$phonebook_group = array_map("escape", $phonebook_group);
+		$phonebook_group = array_map("escape", $phonebook_group);
 
-		//$checked = in_array($phonebook_group['group_uuid'], $phonebook_groups) ? "checked" : "";
+		$checked = in_array($phonebook_group['group_uuid'], $phonebook_groups) ? "checked" : "";
 
 		$on_click_text = "(document.getElementById('group_" . $phonebook_group['group_uuid'] ."').checked)" ;
 		$on_click_text .= " ? document.getElementById('group_" . $phonebook_group['group_uuid'] . "').checked = false";
